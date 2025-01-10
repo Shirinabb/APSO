@@ -1,0 +1,128 @@
+import java.util.*;
+
+class Vehicle {
+    int id;
+    String type; // Classic, Connected, or Autonomous
+    double x, y, angle; // Position and angle
+    double speed;
+    double acceleration;
+    boolean warningIssued;
+
+    public Vehicle(int id, String type, double x, double y, double angle, double speed, double acceleration) {
+        this.id = id;
+        this.type = type;
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.speed = speed;
+        this.acceleration = acceleration;
+        this.warningIssued = false;
+    }
+
+    public double calculateDistance(Vehicle other) {
+        return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
+    }
+}
+
+class Cluster {
+    List<Vehicle> vehicles;
+    Vehicle headVehicle;
+
+    public Cluster() {
+        this.vehicles = new ArrayList<>();
+    }
+
+    public void addVehicle(Vehicle vehicle) {
+        vehicles.add(vehicle);
+    }
+
+    public void determineHeadVehicle() {
+        double minDistanceSum = Double.MAX_VALUE;
+        for (Vehicle v1 : vehicles) {
+            double distanceSum = 0;
+            for (Vehicle v2 : vehicles) {
+                distanceSum += v1.calculateDistance(v2);
+            }
+            if (distanceSum < minDistanceSum) {
+                minDistanceSum = distanceSum;
+                headVehicle = v1;
+            }
+        }
+    }
+}
+
+class APSO {
+    List<Vehicle> vehicles;
+    List<Cluster> clusters;
+    double validatedDistance;
+    double validatedSpeed;
+    int iterations;
+
+    public APSO(List<Vehicle> vehicles, double validatedDistance, double validatedSpeed, int iterations) {
+        this.vehicles = vehicles;
+        this.validatedDistance = validatedDistance;
+        this.validatedSpeed = validatedSpeed;
+        this.iterations = iterations;
+        this.clusters = new ArrayList<>();
+    }
+
+    public void initializeClusters(int numClusters) {
+        Random random = new Random();
+        for (int i = 0; i < numClusters; i++) {
+            clusters.add(new Cluster());
+        }
+
+        for (Vehicle vehicle : vehicles) {
+            int clusterIndex = random.nextInt(numClusters);
+            clusters.get(clusterIndex).addVehicle(vehicle);
+        }
+
+        for (Cluster cluster : clusters) {
+            cluster.determineHeadVehicle();
+        }
+    }
+
+    public void runAPSO() {
+        for (int iter = 0; iter < iterations; iter++) {
+            for (Cluster cluster : clusters) {
+                Vehicle head = cluster.headVehicle;
+                for (Vehicle vehicle : cluster.vehicles) {
+                    double distance = vehicle.calculateDistance(head);
+                    if (distance < validatedDistance) {
+                        issueWarning(vehicle, head);
+                    }
+
+                    // Update position based on PSO logic
+                    vehicle.x += vehicle.speed * Math.cos(vehicle.angle);
+                    vehicle.y += vehicle.speed * Math.sin(vehicle.angle);
+                }
+
+                // Re-evaluate head vehicle
+                cluster.determineHeadVehicle();
+            }
+        }
+    }
+
+    private void issueWarning(Vehicle vehicle, Vehicle head) {
+        if (!vehicle.warningIssued) {
+            System.out.println("Warning issued to Vehicle " + vehicle.id + " due to proximity with Head Vehicle " + head.id);
+            vehicle.warningIssued = true;
+        }
+    }
+}
+
+public class APSOSimulation {
+    public static void main(String[] args) {
+        List<Vehicle> vehicles = new ArrayList<>();
+        vehicles.add(new Vehicle(1, "Classic", 0, 0, 0, 50, 2));
+        vehicles.add(new Vehicle(2, "Connected", 100, 100, 0, 60, 1.5));
+        vehicles.add(new Vehicle(3, "Autonomous", 200, 200, 0, 70, 2));
+        vehicles.add(new Vehicle(4, "Connected", 300, 300, 0, 80, 2.5));
+
+        APSO apso = new APSO(vehicles, 50, 100, 100);
+        apso.initializeClusters(2);
+        apso.runAPSO();
+
+        System.out.println("Simulation complete.");
+    }
+}
